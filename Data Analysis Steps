@@ -1,0 +1,340 @@
+NFL project Data Analysis Steps
+
+1. Introduction
+   a. What is the problem being analyzed?
+   b. How will it be analyzed?
+   c. What tools will be used?
+   
+2. Compiling the data
+    a. sources
+    b. combining data
+    
+3. Exploratory Analysis
+
+4. Model building
+
+5. Conclusion
+
+
+
+CODE FROM DATA MINING PROJECT
+
+# Load Packages ----
+library(plyr)
+library(corrplot)
+library(tidyverse)
+library(gridExtra)
+library(ggthemes)
+library(caret)
+library(MASS)
+library(randomForest)
+library(party)
+library(FactoMineR)
+library(openxlsx)
+library(factoextra)
+library(reshape2)
+#library(Factoshiny)
+library(cowplot)
+#library(e1071)
+#library(PerformanceAnalytics)
+
+
+
+
+
+# Read Data into R Studio ----
+ChurnData <- read.csv("C:/Users/regis/Desktop/C744PA/WA_Fn-UseC_-Telco-Customer-Churn.csv")
+
+
+
+
+
+# Identify NA values in each column ----
+
+na_count <-sapply(ChurnData, function(y) sum(length(which(is.na(y)))))
+na_count <- data.frame(na_count)
+na_count
+
+# 11 NA values were found in the TotalCharges column
+
+# Subset rows with NA values 
+new_data <- ChurnData[rowSums(is.na(ChurnData)) > 0,]
+new_data
+# These customers all appear to be new (Tenure = 0). Summing the number of new customers (tenure = 0) confirms the new customers and missing TotalCharges both equal 11.
+sum(ChurnData$tenure == "0")
+
+
+# Remove new customers from data set
+(ChurnDataComplete <- na.omit(ChurnData))
+
+
+
+
+
+# Summarize how many customers left the company (Churn) ----
+summary(ChurnDataComplete$Churn)
+#5163 customers stayed and 1869 left
+
+
+
+
+
+# Summarize customer tenure ----
+summary(ChurnData$tenure)
+
+
+
+
+
+# Recode "no internet service" to "No" in six columns: OnlineSecurity to StreamingMovies. Recode "No phone Service" to "No" for MultipleLines. Recode SeniorCitizen to No or Yes----
+cols_recode1 <- c(10:15)
+for(i in 1:ncol(ChurnDataComplete[,cols_recode1])){
+      ChurnDataComplete[,cols_recode1][,i] <- as.factor(mapvalues(ChurnDataComplete[,cols_recode1][,i], from =c("No internet service"), to=c("No")))
+}
+
+ChurnDataComplete$MultipleLines <- as.factor(mapvalues(ChurnDataComplete$MultipleLines, from=c("No phone service"), to=c("No")))
+ChurnDataComplete$SeniorCitizen <- as.factor(mapvalues(ChurnDataComplete$SeniorCitizen, from = c("0", "1"), to = c("No", "Yes")))
+
+
+
+
+
+# Group tenure into five groups: "0-12 Months", "12-24 Months", "24-48 Months", "48-60 Months", ">60 Months" ----
+ChurnDataComplete$tenureGroup <- cut(ChurnDataComplete$tenure, breaks = c(0,12,24,48,60,72), labels = c("0-12 Months", "12-24 Months", "24-48 Months", "48-60 Months", ">60 Months"))
+
+
+
+
+
+# Determine correlation between numeric variables ----
+numeric.var <- sapply(ChurnDataComplete, is.numeric)
+corrMatrix <- cor(ChurnDataComplete[,numeric.var])
+corrplot(corrMatrix, main = "\n\nCorrelation Plot for Numeric Variables", method = "number")
+
+
+
+
+
+# Remove columns not needed for analysis
+ChurnDataComplete$TotalCharges <- NULL
+ChurnDataComplete$customerID <- NULL
+ChurnDataComplete$tenure <- NULL
+
+
+# Save clean data as XLSX file ----
+write.xlsx(ChurnDataComplete, file = "C744PAData.xlsx")
+
+
+
+# Construct Bar Plots of Categorical Variables to examine distribution ----
+GenderPlot <- ggplot(data = ChurnDataComplete, aes(x = gender, fill = gender)) + ggtitle("Gender") + xlab("Gender") + geom_bar(stat = "count") + theme(legend.position = "none") 
+SeniorPlot <- ggplot(data = ChurnDataComplete, aes(x = SeniorCitizen, fill = SeniorCitizen)) + ggtitle("SeniorCitizen") + xlab("SeniorCitizen") + geom_bar(stat = "count") + theme(legend.position = "none")
+PartnerPlot <- ggplot(data = ChurnDataComplete, aes(x = Partner, fill = Partner)) + ggtitle("Partner") + xlab("Partner") + geom_bar(stat = "count") + theme(legend.position = "none")  
+DependentsPlot <- ggplot(data = ChurnDataComplete, aes(x = Dependents, fill = Dependents)) + ggtitle("Dependents") + xlab("Dependents") + geom_bar(stat = "count") + theme(legend.position = "none")  
+PhonePlot <- ggplot(data = ChurnDataComplete, aes(x = PhoneService, fill = PhoneService)) + ggtitle("PhoneService") + xlab("PhoneService") + geom_bar(stat = "count") + theme(legend.position = "none") 
+LinesPlot <- ggplot(data = ChurnDataComplete, aes(x = MultipleLines, fill = MultipleLines)) + ggtitle("MultipleLines") + xlab("MultipleLines") + geom_bar(stat = "count") + theme(legend.position = "none") 
+InternetPlot <- ggplot(data = ChurnDataComplete, aes(x = InternetService, fill = InternetService)) + ggtitle("InternetService") + xlab("InternetService") + geom_bar(stat = "count") + theme(legend.position = "none")
+SecurityPlot <- ggplot(data = ChurnDataComplete, aes(x = OnlineSecurity, fill = OnlineSecurity)) + ggtitle("OnlineSecurity") + xlab("OnlineSecurity") + geom_bar(stat = "count") + theme(legend.position = "none") 
+BackupPlot <- ggplot(data = ChurnDataComplete, aes(x = OnlineBackup, fill = OnlineBackup)) + ggtitle("OnlineBackup") + xlab("OnlineBackup") + geom_bar(stat = "count") + theme(legend.position = "none")
+ProtectionPlot <- ggplot(data = ChurnDataComplete, aes(x = DeviceProtection, fill = DeviceProtection)) + ggtitle("DeviceProtection") + xlab("DeviceProtection") + geom_bar(stat = "count") + theme(legend.position = "none")
+SupportPlot <- ggplot(data = ChurnDataComplete, aes(x = TechSupport, fill = TechSupport)) + ggtitle("TechSupport") + xlab("TechSupport") + geom_bar(stat = "count") + theme(legend.position = "none")
+StreamingPlot <- ggplot(data = ChurnDataComplete, aes(x = StreamingTV, fill = StreamingTV)) + ggtitle("StreamingTV") + xlab("StreamingTV") + geom_bar(stat = "count") + theme(legend.position = "none")
+MoviesPlot <- ggplot(data = ChurnDataComplete, aes(x = StreamingMovies, fill = StreamingMovies)) + ggtitle("StreamingMovies") + xlab("StreamingMovies") + geom_bar(stat = "count") + theme(legend.position = "none")
+ContractPlot <- ggplot(data = ChurnDataComplete, aes(x = Contract, fill = Contract)) + ggtitle("Contract") + xlab("Contract") + geom_bar(stat = "count") + theme(legend.position = "none")
+BillingPlot <- ggplot(data = ChurnDataComplete, aes(x = PaperlessBilling, fill = PaperlessBilling)) + ggtitle("PaperlessBilling") + xlab("PaperlessBilling") + geom_bar(stat = "count") + theme(legend.position = "none")
+PaymentPlot <- ggplot(data = ChurnDataComplete, aes(x = PaymentMethod, fill = PaymentMethod)) + ggtitle("PaymentMethod") + xlab("PaymentMethod") + geom_bar(stat = "count") + theme(legend.position = "none")
+TenurePlot <- ggplot(data = ChurnDataComplete, aes(x = tenureGroup, fill = tenureGroup)) + ggtitle("tenureGroup") + xlab("tenureGroup") + geom_bar(stat = "count") + theme(legend.position = "none")
+
+
+grid.arrange(GenderPlot, SeniorPlot, PartnerPlot, DependentsPlot, PhonePlot, LinesPlot, SecurityPlot, BackupPlot, ncol = 2)
+grid.arrange(BackupPlot, ProtectionPlot, SupportPlot, StreamingPlot, MoviesPlot, BillingPlot, ncol=2)
+grid.arrange(InternetPlot, ContractPlot, PaymentPlot, TenurePlot, ncol=2)
+
+
+# Chi-Squared tests of categorical variables vs Churn ----
+
+#Use code below to calculate individually
+#tbl1 <- table(ChurnDataComplete$gender, ChurnDataComplete$Churn)
+#chisq.test(tbl1)
+#p-value = 0.4905
+
+# Run a Chi Square test of independence on all variables against churn
+ChurnDataComplete %>% 
+     summarise_each(funs(chisq.test(., ChurnDataComplete$Churn)$p.value), -one_of("Churn"))
+
+# Logistic regression model to determine if MonthlyCharges are correlated with Churn
+logistic1 <- glm(Churn ~ MonthlyCharges, data = ChurnDataComplete, family = "binomial")
+#summary(logistic1)
+#p-value <2e-16
+#AIC: 7877.3
+
+
+# Logistic Regression - create training and testing sets ----
+intrain <- createDataPartition(ChurnDataComplete$Churn, p = 0)
+intrain <- createDataPartition(ChurnDataComplete$Churn, p = 0.7, list = FALSE)
+set.seed(2017)
+training <- ChurnDataComplete[intrain,]
+testing <- ChurnDataComplete[-intrain,]
+dim(training); dim(testing)
+
+
+
+
+
+# Fitting the Logistic Regression Model ----
+LogModel <- glm(Churn ~ ., family = binomial(link = "logit"), data = training)
+summary(LogModel)
+
+
+
+
+
+# Feature Analysis ----
+anova(LogModel, test = "Chisq")
+
+
+
+
+
+# Assessing predictive ability ----
+testing$Churn <- as.character(testing$Churn)
+testing$Churn[testing$Churn=="No"] <- "0"
+testing$Churn[testing$Churn=="Yes"] <- "1"
+fitted.results <- predict(LogModel,newdata=testing,type='response')
+fitted.results <- round(fitted.results, 0)
+fitted.results <- as.character(fitted.results)
+misClasificError <- mean(fitted.results != testing$Churn)
+print(paste('Logistic Regression Accuracy',1-misClasificError))
+#[1] "Logistic Regression Accuracy 0.793643263757116"
+
+# confusion matrix
+print("Confusion Matrix for Logistic Regression"); table(testing$Churn, fitted.results > 0.5)
+
+
+# Update Logistic Regression Model ----
+LogModel2 <- glm(Churn ~ . - gender - PhoneService, family = binomial(link = "logit"), data = training)
+summary(LogModel2)
+#performance
+testing$Churn <- as.character(testing$Churn)
+testing$Churn[testing$Churn=="No"] <- "0"
+testing$Churn[testing$Churn=="Yes"] <- "1"
+fitted.results <- predict(LogModel2,newdata=testing,type='response')
+fitted.results <- round(fitted.results, 0)
+fitted.results <- as.character(fitted.results)
+misClasificError <- mean(fitted.results != testing$Churn)
+print(paste('Logistic Regression Accuracy',1-misClasificError))
+#"Logistic Regression Accuracy 0.809297912713473"
+
+#Graph
+predicted.data <- data.frame(probability.of.churn = LogModel2$fitted.values, Churn = training$Churn)
+predicted.data <- predicted.data[order(predicted.data$probability.of.churn, decreasing = FALSE),]
+predicted.data$rank <- 1:nrow(predicted.data)
+ggplot(data = predicted.data, aes(x = rank, y = probability.of.churn)) + geom_point(aes(color = Churn), alpha = 1, shape = 16, stroke = 2) + xlab("Index") + ylab("Predicted Probability of Churn")
+
+
+
+
+# Decision Tree ----
+tree <- ctree(Churn ~ Contract + tenureGroup + PaperlessBilling, training)
+table(predict(tree), training$Churn)
+print(tree)
+plot(tree)
+plot(tree, type = "simple")
+
+#predict on test data
+testPred <- predict(tree, newdata = testing)
+table(testPred, testing$Churn)
+print("Confusion Matrix for Decision Tree"); table(Predicted = testPred, Actual = testing$Churn)
+
+# Decision Tree Accuracy
+p1 <- predict(tree, training)
+tab1 <- table(Predicted = p1, Actual = training$Churn)
+tab2 <- table(Predicted = testPred, Actual = testing$Churn)
+print(paste('Decision Tree Accuracy', sum(diag(tab2))/sum(tab2)))
+#[1] "Decision Tree Accuracy 0.762333965844402"
+
+
+# Decision Tree #2
+tree2 <- ctree(Churn ~ Contract + tenureGroup + InternetService + MonthlyCharges + Dependents + Partner + PaymentMethod, training)
+table(predict(tree2), training$Churn)
+print(tree2)
+plot(tree2)
+plot(tree2, type = "simple")
+
+#predict on test data
+testPred2 <- predict(tree2, newdata = testing)
+print("Confusion Matrix for Decision Tree"); table(Predicted = testPred2, Actual = testing$Churn)
+
+# Decision Tree 2 accuracy
+p2 <- predict(tree2, training)
+tab3 <- table(Predicted = p2, Actual = training$Churn)
+tab4 <- table(Predicted = testPred2, Actual = testing$Churn)
+print(paste('Decision Tree Accuracy', sum(diag(tab4))/sum(tab4)))
+
+
+
+
+
+# Random Forest model ----
+rfModel <- randomForest(Churn ~ ., data = training)
+
+print(rfModel)
+
+#note: need to convert Churn in the testing dataset to a factor with Yes and No instead of 1 and o.
+testing[testing$Churn == 0,]$Churn <- "No"
+testing[testing$Churn == 1,]$Churn <- "Yes"
+testing$Churn <- as.factor(testing$Churn)
+
+# Confusion Matrix
+pred_rf <- predict(rfModel, testing)
+caret::confusionMatrix(pred_rf, testing$Churn)
+plot(rfModel)
+#Accuracy : 0.8012 
+
+# Tune model
+t <- tuneRF(training[, -18], training[, 18], stepFactor = 0.5, plot = TRUE, ntreeTry = 200, trace = TRUE, improve = 0.05)
+# Shows that 2 variables for mtry has lowest OOB error.
+
+# Update model
+NewrfModel <- randomForest(Churn ~ ., data = training, ntree = 200, mtry = 2, importance = TRUE, proximity = TRUE)
+NewrfModel
+
+# Updated Confusion Matrix
+pred_rf_new <- predict(NewrfModel, testing)
+caret::confusionMatrix(pred_rf_new, testing$Churn)
+
+#Accuracy : 0.8079 
+
+# Feature importance
+varImpPlot(NewrfModel, sort = TRUE, n.var = 10, main = "Top 10 Feature Importance")
+
+
+
+
+
+# Random Forest on top 7 variables ----
+NewrfModel2 <- randomForest(Churn ~ Contract + tenureGroup + InternetService + MonthlyCharges + Dependents + Partner + PaymentMethod, data = training, ntree = 200, mtry = 2, importance = TRUE, proximity = TRUE)
+NewrfModel2
+
+
+# FAMD Analysis ----
+res.famd <- FAMD(ChurnDataComplete, graph = FALSE)
+
+# Eigenvalues
+eig.val <- get_eigenvalue(res.famd)
+head(eig.val)
+
+fviz_screeplot(res.famd)
+
+# Variables
+var <- get_famd_var(res.famd)
+var
+
+fviz_famd_var(res.famd, repel = TRUE)
+fviz_contrib(res.famd, "var", axes = 1)
+fviz_contrib(res.famd, "var", axes = 2)
+fviz_contrib(res.famd, "var", axes = 1:5)
+
+
+
+#log regression with just most important variables

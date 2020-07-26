@@ -1,0 +1,51 @@
+This file describes each variable and how it was created
+
+*TmGmID - An ID of each game for each team. Each game will have two TmGmID, one for the home team and one for the away team. It is a concatanation of the date and each team.
+
+GameID - Each game has a unique ID. Date of game plus Visiting Team and Home Team
+
+Month; Day - Numerical month and day
+
+Season - Year the season started in. Most regular season games are played in the same year and usually end before December 31.
+
+*VH - Visitor/Home indicator. "LON" - game played in London. "MEX" - game played in Mexico City.
+
+*Team - Name of team
+
+Opponent - Name of opponent
+
+*Result - Win, Loss or Tie
+
+*Margin - Difference in each team's scores. Positive number is Margin of Victory.
+
+*TravelDist - Distance in Air miles team traveled to play in the game. 
+
+*OppTravelDist - Distance in Air miles opposing team traveled.
+
+*Rest - Days since last game played
+
+*OppRest - Days since Opponent's last game played
+
+*ML - Moneyline. Negative number is theoretical amount one would be required to wager to win 100. Positive amount is amount one would win on a 100 wager. Negative number means team is the favorite to win the game.
+
+*OppML - Moneyline for opposing team.
+
+*OpenSpread - The initial spread. A negative number means team is favored to win by that many points. 
+
+*CloseSpread - Closing Spread.
+
+*LineMove - Total amount the line moved. Difference between OpenSpread and CloseSpread.
+
+*OpenTotal - Total amount of points expected to be scored. OpenTotal is initial Total.
+
+*CloseTotal - Closing Total.
+
+*PrevResult - Team's result in previous game. 
+
+*OppPrevRes - Opponent's result in previous game.
+
+*PrevMargin - Margin from team's previous game.
+
+*OppPrevMar - Margin from Opponent's previous game.
+
+*PrevPerfATS - The difference between team's previous margin (PrevMargin) and the spread for the previous game.
